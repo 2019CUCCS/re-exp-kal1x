@@ -1,13 +1,22 @@
 import re 
+import os
+
 all_address = []
 direct = []
 indirect = []
 count = 0
+path = './func'
+
+try: 
+    os.makedirs(path)
+except OSError:
+    if not os.path.isdir(path):
+        raise
 
 def get_asm_func(address): 
     flag=0
     for i in address:
-        result = open('./function/'+i+'.txt','w')
+        result = open('./funcs/'+i+'.txt','w')
         result.write('----------------\n')
         result.write('处理的内存地址'+i+'\n')
         pattern = re.compile(i+':')
@@ -63,6 +72,5 @@ with open(r'c:\\Users\\Eddie Xu\\Desktop\\class\\3.1\\逆向工程\\9.23日作�
     direct_address = list(set(direct))
     for index,add in enumerate(direct_address):
         print('| '+str(index+1)+' | '+add+' |')
-    # 去除main函数
-    direct_address.remove('00403825')
-    # get_asm_func(direct_address)
+
+    get_asm_func(direct_address)
