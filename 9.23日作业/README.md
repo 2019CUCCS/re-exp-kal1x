@@ -21,19 +21,19 @@ CALL WORD PTR[SI]   ;子程序地址在存储器中
 所以在之后编写的代码中，需要加入
 
 ```py
-if end:
-    flag=0
-    break
-elif '004039FB' in line:
-    flag=0
-    break
-else:
-    continue
+def findPos(addr):
+    addr += ':'
+    for i in range(0, len(asm)):
+        pos = asm[i].find(addr)
+        if pos != -1:
+            return i 
+        elif '004039FB:' in asm[i]:
+            return i
+    return -1
 ```
 
-用来判断是否该进程（函数）结束
+用来返回进程（函数）结束时的地址
 
-可以发现`00403993,00403999,0040398D`三个地址处的函数没有ret，直接处理到了反汇编代码结尾
 
 ## 实验要求
 
@@ -63,75 +63,89 @@ objdump -d 'C:\Windows\SysWOW64\PING.EXE' > 'ping_disasm.txt'
 注：`call esi` 这种call与寄存器的组合也算`段内间接调用`,但是此处无法获取到具体地址，所以在脚本中并未取出
 
 ```py
-# 获取exe文件中的函数个数与地址
 import re 
+import os
+
 all_address = []
 direct = []
 indirect = []
+asm = []
 count = 0
+path = './func'
 
-def get_asm_func(address): 
-    flag=0
-    for i in address:
-        result = open('./function/'+i+'.txt','w')
-        result.write('----------------\n')
-        result.write('处理的内存地址'+i+'\n')
-        pattern = re.compile(i+':')
-        with open(r'c:\\Users\\Eddie Xu\\Desktop\\class\\3.1\\逆向工程\\9.23日作业\\ping_disasm.txt','r') as f:  
-            lines = f.readlines()
-            for line in lines:
-                start = re.findall(pattern, line)
-                if start:
-                    flag=1
-                if flag:    
-                    result.write(line)
-                    end = re.findall('ret',line)
-                    if end:
-                        flag=0
-                        break
-                    elif '004039FB' in line:
-                        flag=0
-                        break
-                    else:
-                        continue
-                else:
-                    continue
-            result.write('----------------\n')
-        result.close()
+try: 
+    os.makedirs(path)
+except OSError:
+    if not os.path.isdir(path):
+        raise
 
-with open(r'c:\\Users\\Eddie Xu\\Desktop\\class\\3.1\\逆向工程\\9.23日作业\\ping_disasm.txt','r') as f:    
-    lines = f.readlines()
-    for line in lines:
-        if 'call' in line:
-            # 获取全部的call指令
-            count += 1
-            all_address.append(line)
-            # 获取段内间接调用
-            indirect_pattern = re.compile(r'ds:\[(.*)\]')
-            indirect_addr = re.search(indirect_pattern,line)
-            if indirect_addr:
-                indirect.append(indirect_addr.group(1))
-            #获取段内直接调用
-            direct_pattern = re.compile(r'call        ([\dA-Z]{8})')
-            direct_addr = re.search(direct_pattern,line)
-            if direct_addr:
-                direct.append(direct_addr.group(1))   
-    
-    print('---------------------------------')
-    print('段内间接调用情况:')
-    print('|个数|函数地址|')
-    indirect_address = list(set(indirect))
-    for index,add in enumerate(indirect_address):
-        print('| '+str(index+1)+' | '+add+' |')
-    print('---------------------------------')
-    print('段内直接调用情况:')
-    print('|个数|函数地址|')
-    direct_address = list(set(direct))
-    for index,add in enumerate(direct_address):
-        print('| '+str(index+1)+' | '+add+' |')
-    # 去除main函数
-    direct_address.remove('00403825')
-    get_asm_func(direct_address)
+with open(r'c:\\Users\\Eddie Xu\\Desktop\\class\\3.1\\逆向工程\\9.23日作业\\ping_disasm.txt','r') as f:  
+    asm = f.readlines()
+
+def findPos(addr):
+    addr += ':'
+    for i in range(0, len(asm)):
+        pos = asm[i].find(addr)
+        if pos != -1:
+            return i 
+        elif '004039FB:' in asm[i]:
+            return i
+
+    return -1
+
+def get_func_asm(address_list):
+    for i in range(0, len(address_list)):
+        if i != len(address_list) - 1:  # i在没有到最后一行前
+            start = findPos(address_list[i])  # 第i个地址
+            end = findPos(address_list[i + 1])  # 第i+1个地址
+            with open(os.path.join(path, address_list[i] + ".txt"), 'w') as f:
+                f.write("".join(asm[start:end]))
+        else:
+            start = findPos(address_list[i])
+            with open(os.path.join(path, address_list[i] + ".txt"), 'w') as f:
+                f.write("\n".join(asm[start:len(asm)-9]))
+
+def get_address():
+    with open(r'c:\\Users\\Eddie Xu\\Desktop\\class\\3.1\\逆向工程\\9.23日作业\\ping_disasm.txt','r') as f:    
+        lines = f.readlines()
+        for line in lines:
+            if 'call' in line:
+                # 获取全部的call指令
+                all_address.append(line)
+                # 获取段内间接调用
+                indirect_pattern = re.compile(r'ds:\[(.*)\]')
+                indirect_addr = re.search(indirect_pattern,line)
+                if indirect_addr:
+                    indirect.append(indirect_addr.group(1))
+                #获取段内直接调用
+                direct_pattern = re.compile(r'call        ([\dA-Z]{8})')
+                direct_addr = re.search(direct_pattern,line)
+                if direct_addr:
+                    direct.append(direct_addr.group(1))   
+        
+        print('---------------------------------')
+        print('段内间接调用情况:')
+        print('|个数|函数地址|')
+        indirect_address = list(set(indirect))
+        for index,add in enumerate(indirect_address):
+            print('| '+str(index+1)+' | '+add+' |')
+        print('---------------------------------')
+        print('段内直接调用情况:')
+        print('|个数|函数地址|')
+        direct_address = list(set(direct))
+        # direct_address.append('00403450')
+        direct_address = sorted(direct_address)
+        for index,add in enumerate(direct_address):
+            print('| '+str(index+1)+' | '+add+' |')
+    return direct_address      
+
+def main():
+    result = get_address()
+    get_func_asm(result)
+
+
+if __name__ == '__main__':
+    main()
 ```
 
 结果链接：[result.txt](./result.txt)
@@ -158,22 +172,6 @@ start address 0x00403450
 
 函数的入口点为 ： **0x00403450**
 
-
-4. 在编写的脚本中去除这一地址
-
-在反汇编得到的内容中
-
-```asm
-00403450: E8 D0 03 00 00     call        00403825
-00403455: E9 D9 FD FF FF     jmp         00403233
-```
-
-所以要去除 `00403825` 这一地址
-
-```py
-# 去除main函数
-direct_address.remove('00403825')
-```
 
 ---
 
