@@ -28,36 +28,6 @@ def findPos(addr):
 
     return -1
 
-def get_asm_func(address): 
-    flag=0
-    for i in address:
-        result = open('./funcs/'+i+'.txt','w')
-        result.write('----------------\n')
-        result.write('处理的内存地址'+i+'\n')
-        pattern = re.compile(i+':')
-        with open(r'c:\\Users\\Eddie Xu\\Desktop\\class\\3.1\\逆向工程\\9.23日作业\\ping_disasm.txt','r') as f:  
-            lines = f.readlines()
-            for line in lines:
-                start = re.findall(pattern, line)
-                if start:
-                    flag=1
-                if flag:    
-                    result.write(line)
-                    end = re.findall('ret',line)
-                    if end:
-                        flag=0
-                        break
-                    elif '004039FB' in line:
-                        flag=0
-                        break
-                    else:
-                        continue
-                else:
-                    continue
-            result.write('----------------\n')
-        result.close()
-
-
 def get_func_asm(address_list):
     for i in range(0, len(address_list)):
         if i != len(address_list) - 1:  # i在没有到最后一行前
